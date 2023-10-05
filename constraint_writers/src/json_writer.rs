@@ -23,7 +23,7 @@ impl ConstraintJSON {
             constraints_flag: false,
         })
     }
-    pub fn write_constraint(&mut self, constraint: &str) -> Result<(), ()> {
+    pub fn write_rustonstraint(&mut self, constraint: &str) -> Result<(), ()> {
         if !self.constraints_flag {
             self.constraints_flag = true;
             self.writer_constraints
@@ -70,7 +70,7 @@ impl SignalsJSON {
         writer_signals.flush().map_err(|_err| {})?;
         Result::Ok(SignalsJSON { writer_signals })
     }
-    pub fn write_correspondence(&mut self, signal: String, data: String) -> Result<(), ()> {
+    pub fn write_rustorrespondence(&mut self, signal: String, data: String) -> Result<(), ()> {
         self.writer_signals
             .write_all(format!(",\n\"{}\" : {}", signal, data).as_bytes())
             .map_err(|_err| {})?;

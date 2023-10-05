@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -96,18 +96,18 @@ impl WriteWasm for BranchBucket {
 }
 
 impl WriteC for BranchBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::merge_code;
-        let (condition_code, condition_result) = self.cond.produce_c(producer, parallel);
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::merge_code;
+        let (condition_code, condition_result) = self.cond.produce_rust(producer, parallel);
         let condition_result = format!("Fr_isTrue({})", condition_result);
         let mut if_body = Vec::new();
         for instr in &self.if_branch {
-            let (mut instr_code, _) = instr.produce_c(producer, parallel);
+            let (mut instr_code, _) = instr.produce_rust(producer, parallel);
             if_body.append(&mut instr_code);
         }
         let mut else_body = Vec::new();
         for instr in &self.else_branch {
-            let (mut instr_code, _) = instr.produce_c(producer, parallel);
+            let (mut instr_code, _) = instr.produce_rust(producer, parallel);
             else_body.append(&mut instr_code);
         }
         let mut conditional = format!("if({}){{\n{}}}", condition_result, merge_code(if_body));

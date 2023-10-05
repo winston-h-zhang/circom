@@ -24,7 +24,7 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
     for c_id in list.constraints.get_ids() {
         let c = list.constraints.read_constraint(c_id).unwrap();
         let c = C::apply_correspondence(&c, &list.signal_map);
-        ConstraintSection::write_constraint_usize(&mut constraint_section, c.a(), c.b(), c.c())?;
+        ConstraintSection::write_rustonstraint_usize(&mut constraint_section, c.a(), c.b(), c.c())?;
         if C::is_linear(&c) {
             log.no_linear += 1;
         } else {
@@ -69,7 +69,7 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
             }
             (usage_data, occurring_order)
         };
-        custom_gates_used_section.write_custom_gates_usages(usage_data)?;
+        custom_gates_used_section.write_rustustom_gates_usages(usage_data)?;
         let r1cs = custom_gates_used_section.end_section()?;
 
         let mut custom_gates_applied_section =
@@ -117,7 +117,7 @@ pub fn port_r1cs(list: &ConstraintList, output: &str, custom_gates: bool) -> Res
             iterate(iterator, &list.signal_map, &mut application_data);
             find_indexes(occurring_order, application_data)
         };
-        custom_gates_applied_section.write_custom_gates_applications(application_data)?;
+        custom_gates_applied_section.write_rustustom_gates_applications(application_data)?;
         let r1cs = custom_gates_applied_section.end_section()?;
         R1CSWriter::finish_writing(r1cs)?;
     }

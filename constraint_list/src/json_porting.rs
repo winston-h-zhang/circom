@@ -42,7 +42,7 @@ pub fn port_constraints(
         let constraint = storage.read_constraint(c_id).unwrap();
         let constraint = C::apply_correspondence(&constraint, map);
         let json_value = transform_constraint_to_json(&constraint);
-        writer.write_constraint(&json_value.to_string())?;
+        writer.write_rustonstraint(&json_value.to_string())?;
     }
     writer.end()
 }

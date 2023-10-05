@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -108,13 +108,13 @@ impl WriteWasm for LogBucket {
 }
 
 impl WriteC for LogBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let mut log_c = Vec::new();
         let mut index = 0;
         for logarg in &self.argsprint {
             if let LogBucketArg::LogExp(exp) = logarg {
-                let (mut argument_code, argument_result) = exp.produce_c(producer, parallel);
+                let (mut argument_code, argument_result) = exp.produce_rust(producer, parallel);
                 let to_string_call =
                     build_call("Fr_element2str".to_string(), vec![argument_result]);
                 let temp_var = "temp".to_string();

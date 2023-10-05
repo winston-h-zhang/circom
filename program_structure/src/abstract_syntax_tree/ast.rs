@@ -608,7 +608,7 @@ pub fn produce_report_with_message(error_code: ReportCode, msg: String) -> Repor
     }
 }
 
-pub fn produce_compiler_version_report(
+pub fn produce_rustompiler_version_report(
     path: String,
     required_version: Version,
     version: Version,

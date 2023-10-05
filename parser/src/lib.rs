@@ -13,7 +13,7 @@ mod syntax_sugar_remover;
 
 use include_logic::{FileStack, IncludesGraph};
 use program_structure::ast::{
-    produce_compiler_version_report, produce_report, produce_report_with_message,
+    produce_rustompiler_version_report, produce_report, produce_report_with_message,
     produce_version_warning_report, Expression,
 };
 use program_structure::error_code::ReportCode;
@@ -224,7 +224,7 @@ fn check_number_version(
         {
             Ok(vec![])
         } else {
-            Err(produce_compiler_version_report(
+            Err(produce_rustompiler_version_report(
                 file_path,
                 required_version,
                 version_compiler,

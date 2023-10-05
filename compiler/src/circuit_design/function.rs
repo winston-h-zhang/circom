@@ -2,7 +2,7 @@ use super::types::*;
 use crate::hir::very_concrete_program::Param;
 use crate::intermediate_representation::InstructionList;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 //use std::io::Write;
 
@@ -89,8 +89,8 @@ impl WriteWasm for FunctionCodeInfo {
 }
 
 impl WriteC for FunctionCodeInfo {
-    fn produce_c(&self, producer: &CProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let header = format!("void {}", self.header);
         let params = vec![
             declare_circom_calc_wit(),
@@ -111,7 +111,7 @@ impl WriteC for FunctionCodeInfo {
         ));
         body.push(format!("u64 {} = {};", my_id(), component_father()));
         for t in &self.body {
-            let (mut instructions_body, _) = t.produce_c(producer, Some(false));
+            let (mut instructions_body, _) = t.produce_rust(producer, Some(false));
             body.append(&mut instructions_body);
         }
         let callable = build_callable(header, params, body);

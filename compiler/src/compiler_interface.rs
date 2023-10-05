@@ -37,23 +37,23 @@ pub fn write_wasm(
     circuit.produce_wasm(js_folder, wasm_name, &mut writer)
 }
 
-pub fn write_c(
+pub fn write_rust(
     circuit: &Circuit,
-    c_folder: &str,
-    c_run_name: &str,
-    c_file: &str,
+    rust_folder: &str,
+    rust_run_name: &str,
+    rust_file: &str,
     dat_file: &str,
 ) -> Result<(), ()> {
     use std::path::Path;
-    if Path::new(c_folder).is_dir() {
-        std::fs::remove_dir_all(c_folder).map_err(|_err| {})?;
+    if Path::new(rust_folder).is_dir() {
+        std::fs::remove_dir_all(rust_folder).map_err(|_err| {})?;
     }
-    std::fs::create_dir(c_folder).map_err(|_err| {})?;
+    std::fs::create_dir(rust_folder).map_err(|_err| {})?;
     let dat_file = File::create(dat_file).map_err(|_err| {})?;
-    let c_file = File::create(c_file).map_err(|_err| {})?;
-    let mut c_file = BufWriter::new(c_file);
+    let rust_file = File::create(rust_file).map_err(|_err| {})?;
+    let mut rust_file = BufWriter::new(rust_file);
     let mut dat_file = BufWriter::new(dat_file);
-    circuit.produce_c(c_folder, c_run_name, &mut c_file, &mut dat_file)
+    circuit.produce_rust(rust_folder, rust_run_name, &mut rust_file, &mut dat_file)
 }
 
 fn produce_debug_output(circuit: &Circuit) -> Result<(), ()> {

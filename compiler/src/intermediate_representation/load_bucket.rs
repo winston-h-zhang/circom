@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -180,13 +180,13 @@ impl WriteWasm for LoadBucket {
 }
 
 impl WriteC for LoadBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let mut prologue = vec![];
         //prologue.push(format!("// start of load line {} bucket {}",self.line.to_string(),self.to_string()));
         let cmp_index_ref;
         if let AddressType::SubcmpSignal { cmp_address, .. } = &self.address_type {
-            let (mut cmp_prologue, cmp_index) = cmp_address.produce_c(producer, parallel);
+            let (mut cmp_prologue, cmp_index) = cmp_address.produce_rust(producer, parallel);
             prologue.append(&mut cmp_prologue);
             cmp_index_ref = cmp_index;
         } else {
@@ -196,7 +196,7 @@ impl WriteC for LoadBucket {
         let (mut src_prologue, src_index) = if let LocationRule::Indexed { location, .. } =
             &self.src
         {
-            location.produce_c(producer, parallel)
+            location.produce_rust(producer, parallel)
         } else if let LocationRule::Mapped {
             signal_code,
             indexes,
@@ -213,10 +213,10 @@ impl WriteC for LoadBucket {
                 signal_code
             );
             if !indexes.is_empty() {
-                let (mut index_code_0, mut map_index) = indexes[0].produce_c(producer, parallel);
+                let (mut index_code_0, mut map_index) = indexes[0].produce_rust(producer, parallel);
                 map_prologue.append(&mut index_code_0);
                 for i in 1..indexes.len() {
-                    let (mut index_code, index_exp) = indexes[i].produce_c(producer, parallel);
+                    let (mut index_code, index_exp) = indexes[i].produce_rust(producer, parallel);
                     map_prologue.append(&mut index_code);
                     map_index = format!(
                         "({})*{}->{}[{}].defs[{}].lengths[{}]+{}",

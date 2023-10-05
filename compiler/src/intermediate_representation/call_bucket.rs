@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -385,8 +385,8 @@ impl WriteWasm for CallBucket {
 }
 
 impl WriteC for CallBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let mut prologue = vec![];
         //create block
         prologue.push("{\n".to_string());
@@ -398,7 +398,7 @@ impl WriteC for CallBucket {
         let mut i = 0;
         for p in &self.arguments {
             prologue.push(format!("// copying argument {}", i));
-            let (mut prologue_value, src) = p.produce_c(producer, parallel);
+            let (mut prologue_value, src) = p.produce_rust(producer, parallel);
             prologue.append(&mut prologue_value);
             let arena_position = format!("&{}[{}]", L_VAR_FUNC_CALL_STORAGE, count);
             if self.argument_types[i].size > 1 {
@@ -439,7 +439,7 @@ impl WriteC for CallBucket {
             ReturnType::Final(data) => {
                 let cmp_index_ref = "cmp_index_ref".to_string();
                 if let AddressType::SubcmpSignal { cmp_address, .. } = &data.dest_address_type {
-                    let (mut cmp_prologue, cmp_index) = cmp_address.produce_c(producer, parallel);
+                    let (mut cmp_prologue, cmp_index) = cmp_address.produce_rust(producer, parallel);
                     prologue.append(&mut cmp_prologue);
                     prologue.push("{".to_string());
                     prologue.push(format!("uint {} = {};", cmp_index_ref, cmp_index));
@@ -452,7 +452,7 @@ impl WriteC for CallBucket {
                     } = &data.dest
                     {
                         (
-                            location.produce_c(producer, parallel),
+                            location.produce_rust(producer, parallel),
                             template_header.clone(),
                         )
                     } else if let LocationRule::Mapped {
@@ -477,13 +477,13 @@ impl WriteC for CallBucket {
                                 indexes.len()
                             ));
                             let (mut index_code_0, mut map_index) =
-                                indexes[0].produce_c(producer, parallel);
+                                indexes[0].produce_rust(producer, parallel);
                             map_prologue.append(&mut index_code_0);
                             map_prologue.push(format!("map_index_aux[0]={};", map_index));
                             map_index = "map_index_aux[0]".to_string();
                             for i in 1..indexes.len() {
                                 let (mut index_code, index_exp) =
-                                    indexes[i].produce_c(producer, parallel);
+                                    indexes[i].produce_rust(producer, parallel);
                                 map_prologue.append(&mut index_code);
                                 map_prologue.push(format!(
                                     "map_index_aux[{}]={};",

@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -97,11 +97,11 @@ impl WriteWasm for ReturnBucket {
 }
 
 impl WriteC for ReturnBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let mut instructions = vec![];
         instructions.push("// return bucket".to_string());
-        let (mut instructions_value, src) = self.value.produce_c(producer, parallel);
+        let (mut instructions_value, src) = self.value.produce_rust(producer, parallel);
         instructions.append(&mut instructions_value);
         if self.with_size > 1 {
             let copy_arguments = vec![

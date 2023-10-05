@@ -6,7 +6,7 @@ use crate::intermediate_representation::translate;
 use crate::intermediate_representation::translate::{
     CodeInfo, FieldTracker, ParallelClusters, TemplateDB,
 };
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 use program_structure::file_definition::FileLibrary;
 use std::collections::{BTreeMap, HashMap};
@@ -56,7 +56,7 @@ fn build_template_instances(
             cmp_to_type.insert(name, xtype);
         }
         circuit.wasm_producer.message_list.push(msg);
-        circuit.c_producer.has_parallelism |=
+        circuit.rust_producer.has_parallelism |=
             template.is_parallel || template.is_parallel_component;
 
         let mut component_to_parallel: HashMap<String, ParallelClusters> = HashMap::new();
@@ -241,11 +241,11 @@ fn initialize_wasm_producer(
     producer
 }
 
-fn initialize_c_producer(vcp: &VCP, database: &TemplateDB, version: &str) -> CProducer {
+fn initialize_rust_producer(vcp: &VCP, database: &TemplateDB, version: &str) -> RustProducer {
     use program_structure::utils::constants::UsefulConstants;
     let initial_node = vcp.get_main_id();
     let prime = UsefulConstants::new(&vcp.prime).get_p().clone();
-    let mut producer = CProducer::default();
+    let mut producer = RustProducer::default();
     let stats = vcp.get_stats();
     producer.main_header = vcp.get_main_instance().unwrap().template_header.clone();
     producer.main_signal_offset = 1;
@@ -384,7 +384,7 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
     let mut circuit = Circuit::default();
     circuit.wasm_producer =
         initialize_wasm_producer(&vcp, &template_database, flag.wat_flag, version);
-    circuit.c_producer = initialize_c_producer(&vcp, &template_database, version);
+    circuit.rust_producer = initialize_rust_producer(&vcp, &template_database, version);
 
     let field_tracker = FieldTracker::new();
     let circuit_info = CircuitInfo {
@@ -407,11 +407,11 @@ pub fn build_circuit(vcp: VCP, flag: CompilationFlags, version: &str) -> Circuit
     circuit
         .wasm_producer
         .set_string_table(table_usize_to_string.clone());
-    circuit.c_producer.set_string_table(table_usize_to_string);
+    circuit.rust_producer.set_string_table(table_usize_to_string);
     for i in 0..field_tracker.next_id() {
         let constant = field_tracker.get_constant(i).unwrap().clone();
         circuit.wasm_producer.field_tracking.push(constant.clone());
-        circuit.c_producer.field_tracking.push(constant);
+        circuit.rust_producer.field_tracking.push(constant);
     }
     for fun in &mut circuit.functions {
         set_arena_size_in_calls(&mut fun.body, &function_to_arena_size);

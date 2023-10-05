@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -293,8 +293,8 @@ impl WriteWasm for ComputeBucket {
 }
 
 impl WriteC for ComputeBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         fn get_fr_op(op_type: OperatorType) -> String {
             match op_type {
                 OperatorType::Add => "Fr_add".to_string(),
@@ -329,7 +329,7 @@ impl WriteC for ComputeBucket {
 
         let result;
         for instr in &self.stack {
-            let (mut instr_c, operand) = instr.produce_c(producer, parallel);
+            let (mut instr_c, operand) = instr.produce_rust(producer, parallel);
             operands.push(operand);
             compute_c.append(&mut instr_c);
         }

@@ -74,7 +74,7 @@ where
     (block, size)
 }
 
-fn write_constraint<T>(
+fn write_rustonstraint<T>(
     file: &mut BufWriter<File>,
     a: &HashMap<T, BigInt>,
     b: &HashMap<T, BigInt>,
@@ -300,7 +300,7 @@ impl HeaderSection {
 
 type Constraint = HashMap<usize, BigInt>;
 impl ConstraintSection {
-    pub fn write_constraint_usize(
+    pub fn write_rustonstraint_usize(
         &mut self,
         a: &Constraint,
         b: &Constraint,
@@ -322,7 +322,7 @@ impl ConstraintSection {
             let (_, bytes) = BigInt::from(*k).to_bytes_le();
             r1cs_c.insert(bytes, v.clone());
         }
-        let size = write_constraint(&mut self.writer, &r1cs_a, &r1cs_b, &r1cs_c, field_size)?;
+        let size = write_rustonstraint(&mut self.writer, &r1cs_a, &r1cs_b, &r1cs_c, field_size)?;
         self.size += size;
         self.number_of_constraints += 1;
         Result::Ok(())
@@ -376,7 +376,7 @@ impl SignalSection {
 
 pub type CustomGatesUsedData = Vec<(String, Vec<BigInt>)>;
 impl CustomGatesUsedSection {
-    pub fn write_custom_gates_usages(&mut self, data: CustomGatesUsedData) -> Result<(), ()> {
+    pub fn write_rustustom_gates_usages(&mut self, data: CustomGatesUsedData) -> Result<(), ()> {
         let no_custom_gates = data.len();
         let (no_custom_gates_stream, no_custom_gates_size) =
             bigint_as_bytes(&BigInt::from(no_custom_gates), 4);
@@ -433,7 +433,7 @@ impl CustomGatesUsedSection {
 
 pub type CustomGatesAppliedData = Vec<(usize, Vec<usize>)>;
 impl CustomGatesAppliedSection {
-    pub fn write_custom_gates_applications(
+    pub fn write_rustustom_gates_applications(
         &mut self,
         data: CustomGatesAppliedData,
     ) -> Result<(), ()> {

@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -73,8 +73,8 @@ impl WriteWasm for ValueBucket {
 }
 
 impl WriteC for ValueBucket {
-    fn produce_c(&self, _producer: &CProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, _producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let index = self.value.to_string();
         match self.parse_as {
             ValueType::U32 => (vec![], index),

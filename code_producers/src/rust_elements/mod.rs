@@ -1,9 +1,9 @@
-pub mod c_code_generator;
+pub mod rust_code_generator;
 
 pub use crate::components::*;
 
-pub type CInstruction = String;
-pub struct CProducer {
+pub type RustInstruction = String;
+pub struct RustProducer {
     pub main_header: String,
     pub main_is_parallel: bool,
     //pub fr_memory_size: usize, // depending of the prime; missing in build.rs
@@ -32,7 +32,7 @@ pub struct CProducer {
     string_table: Vec<String>,
 }
 
-impl Default for CProducer {
+impl Default for RustProducer {
     fn default() -> Self {
         let mut my_map = TemplateInstanceIOMap::new();
         my_map.insert(
@@ -90,7 +90,7 @@ impl Default for CProducer {
                 },
             ],
         );
-        CProducer {
+        RustProducer {
             main_header: "Main_0".to_string(),
             main_is_parallel: false,
             has_parallelism: false,
@@ -136,7 +136,7 @@ impl Default for CProducer {
     }
 }
 
-impl CProducer {
+impl RustProducer {
     pub fn get_version(&self) -> usize {
         self.major_version
     }

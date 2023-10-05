@@ -8,13 +8,13 @@ pub struct Input {
     pub out_wasm_code: PathBuf,
     pub out_wasm_name: String,
     pub out_js_folder: PathBuf,
-    pub out_c_run_name: String,
-    pub out_c_folder: PathBuf,
+    pub out_rust_run_name: String,
+    pub out_rust_folder: PathBuf,
     pub out_c_code: PathBuf,
     pub out_c_dat: PathBuf,
     pub out_sym: PathBuf,
     //pub field: &'static str,
-    pub c_flag: bool,
+    pub rust_flag: bool,
     pub wasm_flag: bool,
     pub wat_flag: bool,
     pub r1cs_flag: bool,
@@ -52,9 +52,9 @@ impl Input {
         let mut file_name = input.file_stem().unwrap().to_str().unwrap().to_string();
         let output_path = input_processing::get_output_path(&matches)?;
 
-        let c_flag = input_processing::get_c(&matches);
+        let rust_flag = input_processing::get_c(&matches);
 
-        if c_flag && (file_name == "main" || file_name == "fr" || file_name == "calcwit") {
+        if rust_flag && (file_name == "main" || file_name == "fr" || file_name == "calcwit") {
             println!("{}", Colour::Yellow.paint(format!("The name {} is reserved in Circom when using de --c flag. The files generated for your circuit will use the name {}_c instead of {}.", file_name, file_name, file_name)));
             file_name = format!("{}_c", file_name)
         };
@@ -70,8 +70,8 @@ impl Input {
             out_wasm_code: Input::build_output(&output_js_path, &file_name, WASM),
             out_js_folder: output_js_path.clone(),
             out_wasm_name: file_name.clone(),
-            out_c_folder: output_c_path.clone(),
-            out_c_run_name: file_name.clone(),
+            out_rust_folder: output_c_path.clone(),
+            out_rust_run_name: file_name.clone(),
             out_c_code: Input::build_output(&output_c_path, &file_name, CPP),
             out_c_dat: Input::build_output(&output_c_path, &file_name, DAT),
             out_sym: Input::build_output(&output_path, &file_name, SYM),
@@ -82,7 +82,7 @@ impl Input {
             ),
             wat_flag: input_processing::get_wat(&matches),
             wasm_flag: input_processing::get_wasm(&matches),
-            c_flag,
+            rust_flag,
             r1cs_flag: input_processing::get_r1cs(&matches),
             sym_flag: input_processing::get_sym(&matches),
             main_inputs_flag: input_processing::get_main_inputs_log(&matches),
@@ -144,14 +144,14 @@ impl Input {
         self.out_wasm_name.clone()
     }
 
-    pub fn c_folder(&self) -> &str {
-        self.out_c_folder.to_str().unwrap()
+    pub fn rust_folder(&self) -> &str {
+        self.out_rust_folder.to_str().unwrap()
     }
-    pub fn c_run_name(&self) -> String {
-        self.out_c_run_name.clone()
+    pub fn rust_run_name(&self) -> String {
+        self.out_rust_run_name.clone()
     }
 
-    pub fn c_file(&self) -> &str {
+    pub fn rust_file(&self) -> &str {
         self.out_c_code.to_str().unwrap()
     }
     pub fn dat_file(&self) -> &str {
@@ -166,8 +166,8 @@ impl Input {
     pub fn wat_flag(&self) -> bool {
         self.wat_flag
     }
-    pub fn c_flag(&self) -> bool {
-        self.c_flag
+    pub fn rust_flag(&self) -> bool {
+        self.rust_flag
     }
     pub fn unsimplified_flag(&self) -> bool {
         self.fast_flag

@@ -1799,7 +1799,7 @@ mod tests {
     }
 
     #[test]
-    fn produce_code() {
+    fn produce_rustode() {
         let producer = create_producer();
         let mut writer = create_writer();
         // For every block of code that you want to write in code.wat the following two lines.

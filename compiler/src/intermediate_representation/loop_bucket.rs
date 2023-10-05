@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -77,14 +77,14 @@ impl WriteWasm for LoopBucket {
 }
 
 impl WriteC for LoopBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::merge_code;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::merge_code;
         let (continue_code, continue_result) =
-            self.continue_condition.produce_c(producer, parallel);
+            self.continue_condition.produce_rust(producer, parallel);
         let continue_result = format!("Fr_isTrue({})", continue_result);
         let mut body = vec![];
         for instr in &self.body {
-            let (mut instr_code, _) = instr.produce_c(producer, parallel);
+            let (mut instr_code, _) = instr.produce_rust(producer, parallel);
             body.append(&mut instr_code);
         }
         body.append(&mut continue_code.clone());

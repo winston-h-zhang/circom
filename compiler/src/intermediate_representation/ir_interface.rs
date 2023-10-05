@@ -15,7 +15,7 @@ pub use super::types::{InstrContext, ValueType};
 pub use super::value_bucket::ValueBucket;
 
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 pub trait IntoInstruction {
@@ -125,21 +125,21 @@ impl WriteWasm for Instruction {
 }
 
 impl WriteC for Instruction {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
         use Instruction::*;
         assert!(parallel.is_some());
         match self {
-            Value(v) => v.produce_c(producer, parallel),
-            Load(v) => v.produce_c(producer, parallel),
-            Store(v) => v.produce_c(producer, parallel),
-            Compute(v) => v.produce_c(producer, parallel),
-            Call(v) => v.produce_c(producer, parallel),
-            Branch(v) => v.produce_c(producer, parallel),
-            Return(v) => v.produce_c(producer, parallel),
-            Loop(v) => v.produce_c(producer, parallel),
-            Assert(v) => v.produce_c(producer, parallel),
-            CreateCmp(v) => v.produce_c(producer, parallel),
-            Log(v) => v.produce_c(producer, parallel),
+            Value(v) => v.produce_rust(producer, parallel),
+            Load(v) => v.produce_rust(producer, parallel),
+            Store(v) => v.produce_rust(producer, parallel),
+            Compute(v) => v.produce_rust(producer, parallel),
+            Call(v) => v.produce_rust(producer, parallel),
+            Branch(v) => v.produce_rust(producer, parallel),
+            Return(v) => v.produce_rust(producer, parallel),
+            Loop(v) => v.produce_rust(producer, parallel),
+            Assert(v) => v.produce_rust(producer, parallel),
+            CreateCmp(v) => v.produce_rust(producer, parallel),
+            Log(v) => v.produce_rust(producer, parallel),
         }
     }
 }

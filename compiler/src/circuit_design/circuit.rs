@@ -3,7 +3,7 @@ use super::template::{TemplateCode, TemplateCodeInfo};
 use super::types::*;
 use crate::hir::very_concrete_program::VCP;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 use std::io::Write;
 
@@ -15,7 +15,7 @@ pub struct CompilationFlags {
 #[derive(Default)]
 pub struct Circuit {
     pub wasm_producer: WASMProducer,
-    pub c_producer: CProducer,
+    pub rust_producer: RustProducer,
     pub templates: Vec<TemplateCode>,
     pub functions: Vec<FunctionCode>,
 }
@@ -287,8 +287,8 @@ impl WriteWasm for Circuit {
 }
 
 impl WriteC for Circuit {
-    fn produce_c(&self, producer: &CProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let mut code = vec![];
         // Prologue
         code.push("#include <stdio.h>".to_string());
@@ -364,12 +364,12 @@ impl WriteC for Circuit {
         // Actual code of the circuit
         code.push("// function declarations".to_string());
         for f in &self.functions {
-            let (mut f_code, _) = f.produce_c(producer, None);
+            let (mut f_code, _) = f.produce_rust(producer, None);
             code.append(&mut f_code);
         }
         code.push("// template declarations".to_string());
         for t in &self.templates {
-            let (mut t_code, _) = t.produce_c(producer, None);
+            let (mut t_code, _) = t.produce_rust(producer, None);
             code.append(&mut t_code);
         }
 
@@ -411,8 +411,8 @@ impl WriteC for Circuit {
         (code, "".to_string())
     }
 
-    fn write_c<T: Write>(&self, writer: &mut T, producer: &CProducer) -> Result<(), ()> {
-        use c_code_generator::*;
+    fn write_rust<T: Write>(&self, writer: &mut T, producer: &RustProducer) -> Result<(), ()> {
+        use rust_code_generator::*;
         use code_producers::wasm_elements::wasm_code_generator::merge_code;
         let mut code = vec![];
         let mut code_write;
@@ -496,7 +496,7 @@ impl WriteC for Circuit {
         writer.write_all(code_write.as_bytes()).map_err(|_| {})?;
 
         for f in &self.functions {
-            let (f_code, _) = f.produce_c(producer, None);
+            let (f_code, _) = f.produce_rust(producer, None);
             //code.append(&mut f_code);
             code_write = merge_code(f_code);
             writer.write_all(code_write.as_bytes()).map_err(|_| {})?;
@@ -506,7 +506,7 @@ impl WriteC for Circuit {
         writer.write_all(code_write.as_bytes()).map_err(|_| {})?;
 
         for t in &self.templates {
-            let (t_code, _) = t.produce_c(producer, None);
+            let (t_code, _) = t.produce_rust(producer, None);
             code_write = merge_code(t_code);
             writer.write_all(code_write.as_bytes()).map_err(|_| {})?;
             //code.append(&mut t_code);
@@ -581,29 +581,29 @@ impl Circuit {
     pub fn produce_ir_string_for_function(&self, id: ID) -> String {
         self.functions[id].to_string()
     }
-    pub fn produce_c<W: Write>(
+    pub fn produce_rust<W: Write>(
         &self,
-        c_folder: &str,
+        rust_folder: &str,
         run_name: &str,
         c_circuit: &mut W,
         c_dat: &mut W,
     ) -> Result<(), ()> {
         use std::path::Path;
-        let c_folder_path = Path::new(c_folder.clone()).to_path_buf();
-        c_code_generator::generate_main_cpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_circom_hpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_fr_hpp_file(&c_folder_path, &self.c_producer.prime_str)
+        let rust_folder_path = Path::new(rust_folder.clone()).to_path_buf();
+        rust_code_generator::generate_main_cpp_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_circom_hpp_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_fr_hpp_file(&rust_folder_path, &self.rust_producer.prime_str)
             .map_err(|_err| {})?;
-        c_code_generator::generate_calcwit_hpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_fr_cpp_file(&c_folder_path, &self.c_producer.prime_str)
+        rust_code_generator::generate_calcwit_hpp_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_fr_cpp_file(&rust_folder_path, &self.rust_producer.prime_str)
             .map_err(|_err| {})?;
-        c_code_generator::generate_calcwit_cpp_file(&c_folder_path).map_err(|_err| {})?;
-        c_code_generator::generate_fr_asm_file(&c_folder_path, &self.c_producer.prime_str)
+        rust_code_generator::generate_calcwit_cpp_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_fr_asm_file(&rust_folder_path, &self.rust_producer.prime_str)
             .map_err(|_err| {})?;
-        c_code_generator::generate_make_file(&c_folder_path, run_name, &self.c_producer)
+        rust_code_generator::generate_make_file(&rust_folder_path, run_name, &self.rust_producer)
             .map_err(|_err| {})?;
-        c_code_generator::generate_dat_file(c_dat, &self.c_producer).map_err(|_err| {})?;
-        self.write_c(c_circuit, &self.c_producer)
+        rust_code_generator::generate_dat_file(c_dat, &self.rust_producer).map_err(|_err| {})?;
+        self.write_rust(c_circuit, &self.rust_producer)
     }
     pub fn produce_wasm<W: Write>(
         &self,

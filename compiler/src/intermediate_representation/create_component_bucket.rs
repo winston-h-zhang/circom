@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -204,11 +204,11 @@ impl WriteWasm for CreateCmpBucket {
 }
 
 impl WriteC for CreateCmpBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let complete_array: bool = self.defined_positions.len() == self.number_of_cmp;
         let mut instructions = vec![];
-        let (mut scmp_idx_instructions, scmp_idx) = self.sub_cmp_id.produce_c(producer, parallel);
+        let (mut scmp_idx_instructions, scmp_idx) = self.sub_cmp_id.produce_rust(producer, parallel);
         instructions.append(&mut scmp_idx_instructions);
         std::mem::drop(scmp_idx_instructions);
         instructions.push("{".to_string());

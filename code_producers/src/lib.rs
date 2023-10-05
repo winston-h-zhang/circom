@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-pub mod c_elements;
+pub mod rust_elements;
 #[allow(dead_code)]
 pub mod wasm_elements;
 

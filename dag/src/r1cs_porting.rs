@@ -15,7 +15,7 @@ pub fn write(dag: &DAG, output: &str, custom_gates: bool) -> Result<(), ()> {
     let r1cs = R1CSWriter::new(output.to_string(), field_size, custom_gates)?;
 
     let mut constraint_section = R1CSWriter::start_constraints_section(r1cs)?;
-    let wires = write_constraint_section(&mut constraint_section, &mut log, &tree)? + 1; // adding 1 to include the signal used to represent value 1 in the field (signal one)
+    let wires = write_rustonstraint_section(&mut constraint_section, &mut log, &tree)? + 1; // adding 1 to include the signal used to represent value 1 in the field (signal one)
     let labels = wires;
     let constraint_counter = constraint_section.constraints_written();
     let r1cs = constraint_section.end_section()?;
@@ -63,7 +63,7 @@ pub fn write(dag: &DAG, output: &str, custom_gates: bool) -> Result<(), ()> {
             }
             (usage_data, occurring_order)
         };
-        custom_gates_used_section.write_custom_gates_usages(usage_data)?;
+        custom_gates_used_section.write_rustustom_gates_usages(usage_data)?;
         let r1cs = custom_gates_used_section.end_section()?;
 
         let mut custom_gates_applied_section =
@@ -105,7 +105,7 @@ pub fn write(dag: &DAG, output: &str, custom_gates: bool) -> Result<(), ()> {
             traverse_tree(&tree, &mut application_data);
             find_indexes(occurring_order, application_data)
         };
-        custom_gates_applied_section.write_custom_gates_applications(application_data)?;
+        custom_gates_applied_section.write_rustustom_gates_applications(application_data)?;
         let r1cs = custom_gates_applied_section.end_section()?;
         R1CSWriter::finish_writing(r1cs)?;
     }
@@ -114,7 +114,7 @@ pub fn write(dag: &DAG, output: &str, custom_gates: bool) -> Result<(), ()> {
     Result::Ok(())
 }
 
-fn write_constraint_section(
+fn write_rustonstraint_section(
     constraint_section: &mut ConstraintSection,
     log: &mut Log,
     tree: &Tree,
@@ -126,11 +126,11 @@ fn write_constraint_section(
         } else {
             log.no_non_linear += 1;
         }
-        ConstraintSection::write_constraint_usize(constraint_section, c.a(), c.b(), c.c())?;
+        ConstraintSection::write_rustonstraint_usize(constraint_section, c.a(), c.b(), c.c())?;
     }
     for edge in Tree::get_edges(tree) {
         let subtree = Tree::go_to_subtree(tree, edge);
-        let subtree_signals = write_constraint_section(constraint_section, log, &subtree)?;
+        let subtree_signals = write_rustonstraint_section(constraint_section, log, &subtree)?;
         no_signals += subtree_signals;
     }
     Result::Ok(no_signals)

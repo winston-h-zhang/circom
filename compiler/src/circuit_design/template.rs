@@ -1,6 +1,6 @@
 use crate::intermediate_representation::InstructionList;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 type TemplateID = usize;
@@ -162,21 +162,21 @@ impl WriteWasm for TemplateCodeInfo {
 }
 
 impl WriteC for TemplateCodeInfo {
-    fn produce_c(&self, producer: &CProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
+    fn produce_rust(&self, producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
         let mut produced_c = Vec::new();
         if self.is_parallel || self.is_parallel_component {
-            produced_c.append(&mut self.produce_c_parallel_case(producer, true));
+            produced_c.append(&mut self.produce_rust_parallel_case(producer, true));
         }
         if !self.is_parallel && self.is_not_parallel_component {
-            produced_c.append(&mut self.produce_c_parallel_case(producer, false));
+            produced_c.append(&mut self.produce_rust_parallel_case(producer, false));
         }
         (produced_c, "".to_string())
     }
 }
 
 impl TemplateCodeInfo {
-    fn produce_c_parallel_case(&self, producer: &CProducer, parallel: bool) -> Vec<String> {
-        use c_code_generator::*;
+    fn produce_rust_parallel_case(&self, producer: &RustProducer, parallel: bool) -> Vec<String> {
+        use rust_code_generator::*;
 
         let create_header = if parallel {
             format!("void {}_create_parallel", self.header)
@@ -313,7 +313,7 @@ impl TemplateCodeInfo {
         run_body.push(format!("{};", declare_index_multiple_eq()));
 
         for t in &self.body {
-            let (mut instructions_body, _) = t.produce_c(producer, Some(parallel));
+            let (mut instructions_body, _) = t.produce_rust(producer, Some(parallel));
             run_body.append(&mut instructions_body);
         }
         // parallelism (join at the end of the function)

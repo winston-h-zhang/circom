@@ -1,6 +1,6 @@
 use super::ir_interface::*;
 use crate::translating_traits::*;
-use code_producers::c_elements::*;
+use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 
 #[derive(Clone)]
@@ -307,13 +307,13 @@ impl WriteWasm for StoreBucket {
 }
 
 impl WriteC for StoreBucket {
-    fn produce_c(&self, producer: &CProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use c_code_generator::*;
+    fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
+        use rust_code_generator::*;
         let mut prologue = vec![];
         let cmp_index_ref = "cmp_index_ref".to_string();
         let aux_dest_index = "aux_dest_index".to_string();
         if let AddressType::SubcmpSignal { cmp_address, .. } = &self.dest_address_type {
-            let (mut cmp_prologue, cmp_index) = cmp_address.produce_c(producer, parallel);
+            let (mut cmp_prologue, cmp_index) = cmp_address.produce_rust(producer, parallel);
             prologue.append(&mut cmp_prologue);
             prologue.push("{".to_string());
             prologue.push(format!("uint {} = {};", cmp_index_ref, cmp_index));
@@ -324,7 +324,7 @@ impl WriteC for StoreBucket {
         } = &self.dest
         {
             (
-                location.produce_c(producer, parallel),
+                location.produce_rust(producer, parallel),
                 template_header.clone(),
             )
         } else if let LocationRule::Mapped {
@@ -349,12 +349,12 @@ impl WriteC for StoreBucket {
                     "uint map_index_aux[{}];",
                     indexes.len()
                 ));
-                let (mut index_code_0, mut map_index) = indexes[0].produce_c(producer, parallel);
+                let (mut index_code_0, mut map_index) = indexes[0].produce_rust(producer, parallel);
                 map_prologue.append(&mut index_code_0);
                 map_prologue.push(format!("map_index_aux[0]={};", map_index));
                 map_index = "map_index_aux[0]".to_string();
                 for i in 1..indexes.len() {
-                    let (mut index_code, index_exp) = indexes[i].produce_c(producer, parallel);
+                    let (mut index_code, index_exp) = indexes[i].produce_rust(producer, parallel);
                     map_prologue.append(&mut index_code);
                     map_prologue.push(format!("map_index_aux[{}]={};", i, index_exp));
                     map_index = format!(
@@ -415,7 +415,7 @@ impl WriteC for StoreBucket {
         prologue.push(format!("{} {} = {};", T_P_FR_ELEMENT, aux_dest, dest));
         // Load src
         prologue.push("// load src".to_string());
-        let (mut src_prologue, src) = self.src.produce_c(producer, parallel);
+        let (mut src_prologue, src) = self.src.produce_rust(producer, parallel);
         prologue.append(&mut src_prologue);
         prologue.push("// end load src".to_string());
         std::mem::drop(src_prologue);
