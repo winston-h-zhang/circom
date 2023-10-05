@@ -161,7 +161,7 @@ impl WriteWasm for TemplateCodeInfo {
     }
 }
 
-impl WriteC for TemplateCodeInfo {
+impl WriteRust for TemplateCodeInfo {
     fn produce_rust(&self, producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
         let mut produced_c = Vec::new();
         if self.is_parallel || self.is_parallel_component {

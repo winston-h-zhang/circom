@@ -203,7 +203,7 @@ impl WriteWasm for CreateCmpBucket {
     }
 }
 
-impl WriteC for CreateCmpBucket {
+impl WriteRust for CreateCmpBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
         use rust_code_generator::*;
         let complete_array: bool = self.defined_positions.len() == self.number_of_cmp;
@@ -211,66 +211,45 @@ impl WriteC for CreateCmpBucket {
         let (mut scmp_idx_instructions, scmp_idx) = self.sub_cmp_id.produce_rust(producer, parallel);
         instructions.append(&mut scmp_idx_instructions);
         std::mem::drop(scmp_idx_instructions);
-        instructions.push("{".to_string());
-        instructions.push(format!("uint aux_create = {};", scmp_idx));
-        instructions.push(format!(
-            "int aux_cmp_num = {}+{}+1;",
-            self.component_offset, CTX_INDEX
-        ));
-        instructions.push(format!(
-            "uint csoffset = {}+{};",
-            MY_SIGNAL_START,
-            self.signal_offset
-        ));
+        instructions.push(format!("{{"));
+        instructions.push(format!("let aux_create = {};", scmp_idx));
+        instructions.push(format!("let mut aux_cmp_num = {} + ctx_index + 1;", self.component_offset));
+        instructions.push(format!("let mut csoffset = signal_start + {};", self.signal_offset));
         if self.number_of_cmp > 1 {
-            instructions.push(format!(
-                "uint aux_dimensions[{}] = {};",
-                self.dimensions.len(),
-                set_list(self.dimensions.clone())
-            ));
+            instructions.push(format!("let aux_dimensions = vec!{:?};", self.dimensions));
         }
         // if the array is not uniform with respect to parallelism
         if self.uniform_parallel.is_none() {
-            instructions.push(format!(
-                "bool aux_parallel[{}] = {};",
-                self.number_of_cmp,
-                set_list_bool(self.defined_positions.iter().map(|(_x, y)| *y).collect()),
-            ));
+            unimplemented!()
         }
         // if the array is complete traverse all its positions
         if complete_array {
-            instructions.push(format!(
-                "for (uint i = 0; i < {}; i++) {{",
-                self.number_of_cmp
-            ));
+            instructions.push(format!("for i in 0..{} {{", self.number_of_cmp));
             // update the value of the the paralel status if it is not uniform parallel using the array aux_parallel
             if self.uniform_parallel.is_none() {
-                instructions.push("bool status_parallel = aux_parallel[i];".to_string());
+                instructions.push(format!("bool status_parallel = aux_parallel[i];"));
             }
         }
         // generate array with the positions that are actually created if there are empty components
         // if not only traverse the defined positions, but i gets the value of the indexed accesed position
         else {
             instructions.push(format!(
-                "uint aux_positions [{}]= {};",
+                "uint aux_positions[{}] = {};",
                 self.defined_positions.len(),
                 set_list(self.defined_positions.iter().map(|(x, _y)| *x).collect())
             ));
-            instructions.push(format!(
-                "for (uint i_aux = 0; i_aux < {}; i_aux++) {{",
-                self.defined_positions.len()
-            ));
-            instructions.push("uint i = aux_positions[i_aux];".to_string());
+            instructions.push(format!("for (uint i_aux = 0; i_aux < {}; i_aux++) {{", self.defined_positions.len()));
+            instructions.push(format!("uint i = aux_positions[i_aux];"));
             // update the value of the the paralel status if it is not uniform parallel using the array aux_parallel
             if self.uniform_parallel.is_none() {
-                instructions.push("bool status_parallel = aux_parallel[i_aux];".to_string());
+                instructions.push(format!("bool status_parallel = aux_parallel[i_aux];"));
             }
         }
 
         if self.number_of_cmp > 1 {
             instructions.push(format!(
-                "std::string new_cmp_name = \"{}\"+{};",
-                self.name_subcomponent,
+                "std::string new_cmp_name = \"{}\" + {};",
+                self.name_subcomponent.to_string(),
                 generate_my_array_position(
                     "aux_dimensions".to_string(),
                     self.dimensions.len().to_string(),
@@ -278,11 +257,9 @@ impl WriteC for CreateCmpBucket {
                 )
             ));
         } else {
-            instructions.push(format!(
-                "std::string new_cmp_name = \"{}\";",
-                self.name_subcomponent
-            ));
+            instructions.push(format!("let new_cmp_name = \"{}\";", self.name_subcomponent));
         }
+
         let create_args = vec![
             "csoffset".to_string(),
             "aux_cmp_num".to_string(),
@@ -293,26 +270,19 @@ impl WriteC for CreateCmpBucket {
 
         // if it is not uniform parallel check the value of status parallel to create the component
         if self.uniform_parallel.is_none() {
-            instructions.push(format!(
-                "{}[aux_create+i] = status_parallel;",
-                MY_SUBCOMPONENTS_PARALLEL
-            ));
+            instructions.push(format!("{}[aux_create+i] = status_parallel;", MY_SUBCOMPONENTS_PARALLEL));
             instructions.push(format!(
                 "if (status_parallel) {}_create_parallel({});",
                 self.symbol,
                 argument_list(create_args.clone())
             ));
-            instructions.push(format!(
-                "else {}_create({});",
-                self.symbol,
-                argument_list(create_args)
-            ));
+            instructions.push(format!("else {}_create({});", self.symbol, argument_list(create_args)));
         }
         // if it is uniform parallel we can know if it is parallel or not at compile time
         else {
             if self.is_part_mixed_array_not_uniform_parallel {
                 instructions.push(format!(
-                    "{}[aux_create+i] = {};",
+                    "{}[aux_create + i] = {};",
                     MY_SUBCOMPONENTS_PARALLEL,
                     self.uniform_parallel.unwrap()
                 ));
@@ -323,11 +293,11 @@ impl WriteC for CreateCmpBucket {
             } else {
                 format!("{}_create", self.symbol)
             };
-            let create_call = build_call(sub_cmp_template_create, create_args);
-            instructions.push(format!("{};", create_call));
+
+            instructions.push(format!("{}(csoffset, &mut ctx.components[aux_cmp_num], new_cmp_name, id);", sub_cmp_template_create));
         }
 
-        instructions.push(format!("{}[aux_create+i] = aux_cmp_num;", MY_SUBCOMPONENTS));
+        instructions.push(format!("subcomponents[aux_create + i] = aux_cmp_num;"));
         instructions.push(format!("csoffset += {} ;", self.signal_offset_jump));
         instructions.push(format!("aux_cmp_num += {};", self.component_offset_jump));
         instructions.push("}".to_string());

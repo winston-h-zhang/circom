@@ -69,20 +69,15 @@ impl WriteWasm for AssertBucket {
     }
 }
 
-impl WriteC for AssertBucket {
+impl WriteRust for AssertBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::*;
-        let (prologue, value) = self.evaluate.produce_rust(producer, parallel);
-        let is_true = build_call("Fr_isTrue".to_string(), vec![value]);
-        let if_condition = format!(
-            "if (!{}) {};",
-            is_true,
-            build_failed_assert_message(self.line)
-        );
-        let assertion = format!("{};", build_call("assert".to_string(), vec![is_true]));
-        let mut assert_c = prologue;
-        assert_c.push(if_condition);
-        assert_c.push(assertion);
-        (assert_c, "".to_string())
+        let mut code = Vec::new();
+
+        let (mut prologue, value) = self.evaluate.produce_rust(producer, parallel);
+
+        code.append(&mut prologue);
+        code.push(format!("assert!(field::is_true({}));", value));
+
+        (code, "".into())
     }
 }

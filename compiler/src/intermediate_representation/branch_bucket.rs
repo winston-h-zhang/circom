@@ -95,27 +95,8 @@ impl WriteWasm for BranchBucket {
     }
 }
 
-impl WriteC for BranchBucket {
+impl WriteRust for BranchBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::merge_code;
-        let (condition_code, condition_result) = self.cond.produce_rust(producer, parallel);
-        let condition_result = format!("Fr_isTrue({})", condition_result);
-        let mut if_body = Vec::new();
-        for instr in &self.if_branch {
-            let (mut instr_code, _) = instr.produce_rust(producer, parallel);
-            if_body.append(&mut instr_code);
-        }
-        let mut else_body = Vec::new();
-        for instr in &self.else_branch {
-            let (mut instr_code, _) = instr.produce_rust(producer, parallel);
-            else_body.append(&mut instr_code);
-        }
-        let mut conditional = format!("if({}){{\n{}}}", condition_result, merge_code(if_body));
-        if !else_body.is_empty() {
-            conditional.push_str(&format!("else{{\n{}}}", merge_code(else_body)));
-        }
-        let mut c_branch = condition_code;
-        c_branch.push(conditional);
-        (c_branch, "".to_string())
+        todo!("branch")
     }
 }

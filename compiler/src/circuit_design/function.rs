@@ -88,7 +88,7 @@ impl WriteWasm for FunctionCodeInfo {
     }
 }
 
-impl WriteC for FunctionCodeInfo {
+impl WriteRust for FunctionCodeInfo {
     fn produce_rust(&self, producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
         use rust_code_generator::*;
         let header = format!("void {}", self.header);

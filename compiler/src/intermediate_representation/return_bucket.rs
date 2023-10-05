@@ -96,31 +96,8 @@ impl WriteWasm for ReturnBucket {
     }
 }
 
-impl WriteC for ReturnBucket {
+impl WriteRust for ReturnBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::*;
-        let mut instructions = vec![];
-        instructions.push("// return bucket".to_string());
-        let (mut instructions_value, src) = self.value.produce_rust(producer, parallel);
-        instructions.append(&mut instructions_value);
-        if self.with_size > 1 {
-            let copy_arguments = vec![
-                FUNCTION_DESTINATION.to_string(),
-                src,
-                FUNCTION_DESTINATION_SIZE.to_string(),
-            ];
-            instructions.push(format!(
-                "{};",
-                build_call("Fr_copyn".to_string(), copy_arguments)
-            ));
-        } else {
-            let copy_arguments = vec![FUNCTION_DESTINATION.to_string(), src];
-            instructions.push(format!(
-                "{};",
-                build_call("Fr_copy".to_string(), copy_arguments)
-            ));
-        }
-        instructions.push(add_return());
-        (instructions, "".to_string())
+        todo!("return")
     }
 }

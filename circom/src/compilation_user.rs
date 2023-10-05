@@ -49,6 +49,7 @@ pub fn compile(config: CompilerConfig) -> Result<(), ()> {
                 config.rust_file,
                 config.dat_file
             );
+            // TODO: fix
             println!(
                 "{} {}/main.cpp, circom.hpp, calcwit.hpp, calcwit.cpp, fr.hpp, fr.cpp, fr.asm and Makefile",
                 Colour::Green.paint("Written successfully:"),

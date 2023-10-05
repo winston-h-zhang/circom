@@ -292,47 +292,47 @@ impl WriteWasm for ComputeBucket {
     }
 }
 
-impl WriteC for ComputeBucket {
+impl WriteRust for ComputeBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::*;
-        fn get_fr_op(op_type: OperatorType) -> String {
+        fn build_op(op_type: OperatorType, rhs: Vec<String>) -> String {
             match op_type {
-                OperatorType::Add => "Fr_add".to_string(),
-                OperatorType::Div => "Fr_div".to_string(),
-                OperatorType::Mul => "Fr_mul".to_string(),
-                OperatorType::Sub => "Fr_sub".to_string(),
-                OperatorType::Pow => "Fr_pow".to_string(),
-                OperatorType::IntDiv => "Fr_idiv".to_string(),
-                OperatorType::Mod => "Fr_mod".to_string(),
-                OperatorType::ShiftL => "Fr_shl".to_string(),
-                OperatorType::ShiftR => "Fr_shr".to_string(),
-                OperatorType::LesserEq => "Fr_leq".to_string(),
-                OperatorType::GreaterEq => "Fr_geq".to_string(),
-                OperatorType::Lesser => "Fr_lt".to_string(),
-                OperatorType::Greater => "Fr_gt".to_string(),
-                OperatorType::Eq(_) => "Fr_eq".to_string(),
-                OperatorType::NotEq => "Fr_neq".to_string(),
-                OperatorType::BoolOr => "Fr_lor".to_string(),
-                OperatorType::BoolAnd => "Fr_land".to_string(),
-                OperatorType::BitOr => "Fr_bor".to_string(),
-                OperatorType::BitAnd => "Fr_band".to_string(),
-                OperatorType::BitXor => "Fr_bxor".to_string(),
-                OperatorType::PrefixSub => "Fr_neg".to_string(),
-                OperatorType::BoolNot => "Fr_lnot".to_string(),
-                OperatorType::Complement => "Fr_bnot".to_string(),
+                OperatorType::Add => format!("({} + {})", rhs[0], rhs[1]),
+                OperatorType::Sub => format!("({} - {})", rhs[0], rhs[1]),
+                OperatorType::Mul => format!("({} * {})", rhs[0], rhs[1]),
+                OperatorType::Div => format!("({} / {})", rhs[0], rhs[1]),
+                OperatorType::Pow => todo!(),
+                OperatorType::IntDiv => todo!(),
+                OperatorType::Mod => todo!(),
+                OperatorType::ShiftL => format!("field::shl({}, {})", rhs[0], rhs[1]),
+                OperatorType::ShiftR => format!("field::shr({}, {})", rhs[0], rhs[1]),
+                OperatorType::LesserEq => todo!(),
+                OperatorType::GreaterEq => todo!(),
+                OperatorType::Lesser => format!("field::from_bool(field::lt({}, {}))", rhs[0], rhs[1]),
+                OperatorType::Greater => todo!(),
+                OperatorType::Eq(_) => format!("field::from_bool({} == {})", rhs[0], rhs[1]),
+                OperatorType::NotEq => todo!(),
+                OperatorType::BoolOr => todo!(),
+                OperatorType::BoolAnd => todo!(),
+                OperatorType::BitOr => todo!(),
+                OperatorType::BitAnd => format!("field::bit_and({}, {})", rhs[0], rhs[1]),
+                OperatorType::BitXor => todo!(),
+                OperatorType::PrefixSub => todo!(),
+                OperatorType::BoolNot => todo!(),
+                OperatorType::Complement => todo!(),
                 _ => unreachable!(),
             }
         }
 
-        let mut compute_c = vec![];
+        let mut compute_rust = vec![];
         let mut operands = vec![];
 
-        let result;
         for instr in &self.stack {
-            let (mut instr_c, operand) = instr.produce_rust(producer, parallel);
+            let (mut instr_rust, operand) = instr.produce_rust(producer, parallel);
             operands.push(operand);
-            compute_c.append(&mut instr_c);
+            compute_rust.append(&mut instr_rust);
         }
+
+        let result;
         match &self.op {
             OperatorType::AddAddress => {
                 result = format!("({} + {})", operands[0], operands[1]);
@@ -341,64 +341,20 @@ impl WriteC for ComputeBucket {
                 result = format!("({} * {})", operands[0], operands[1]);
             }
             OperatorType::ToAddress => {
-                result = build_call("Fr_toInt".to_string(), operands);
-            }
-
-            OperatorType::Eq(n) => {
-                let exp_aux_index = self.op_aux_no.to_string();
-                let operator = get_fr_op(self.op);
-                let result_ref = format!("&{}", expaux(exp_aux_index));
-                let mut arguments = vec![result_ref.clone()];
-                let operands_copy = operands.clone();
-                arguments.append(&mut operands);
-                compute_c.push(format!(
-                    "{}; // line circom {}",
-                    build_call(operator.clone(), arguments),
-                    self.line
-                ));
-                if *n > 1 {
-                    compute_c.push(format!("{} = 1;", index_multiple_eq()));
-                    compute_c.push(format!(
-                        "while({} < {} && Fr_isTrue({})) {{",
-                        index_multiple_eq(),
-                        n,
-                        result_ref
-                    ));
-                    operands = vec![];
-                    arguments = vec![result_ref.clone()];
-                    for operand in &operands_copy {
-                        operands.push(format!("{} + {}", operand, index_multiple_eq()));
-                    }
-                    arguments.append(&mut operands);
-                    compute_c.push(format!(
-                        "{}; // line circom {}",
-                        build_call(operator, arguments),
-                        self.line
-                    ));
-                    compute_c.push(format!("{}++;", index_multiple_eq()));
-                    compute_c.push("}".to_string());
-                }
-                result = result_ref;
+                result = format!("(field::to_u64({}).unwrap() as usize)", operands.join(", "));
             }
 
             _ => {
-                let exp_aux_index = self.op_aux_no.to_string();
-                // build assign
-                let operator = get_fr_op(self.op);
-                let result_ref = format!("&{}", expaux(exp_aux_index));
-                let mut arguments = vec![result_ref.clone()];
-                arguments.append(&mut operands);
-                compute_c.push(format!(
-                    "{}; // line circom {}",
-                    build_call(operator, arguments),
+                result = format!("expaux[{}]", self.op_aux_no);
+                compute_rust.push(format!(
+                    "{} = {}; // circom line {}",
+                    result,
+                    build_op(self.op, operands),
                     self.line
                 ));
-
-                //value address
-                result = result_ref;
             }
         }
-        //compute_c.push(format!("// end of compute with result {}",result));
-        (compute_c, result)
+        // compute_rust.push(format!("// end of compute with result {}", result));
+        (compute_rust, result)
     }
 }

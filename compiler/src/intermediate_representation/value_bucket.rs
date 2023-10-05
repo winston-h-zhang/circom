@@ -72,14 +72,13 @@ impl WriteWasm for ValueBucket {
     }
 }
 
-impl WriteC for ValueBucket {
+impl WriteRust for ValueBucket {
     fn produce_rust(&self, _producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::*;
         let index = self.value.to_string();
         match self.parse_as {
             ValueType::U32 => (vec![], index),
             ValueType::BigInt => {
-                let access = format!("&{}", circuit_constants(index));
+                let access = format!("ctx.circuit.constants[{}]", index);
                 (vec![], access)
             }
         }

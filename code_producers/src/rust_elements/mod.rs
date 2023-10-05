@@ -6,7 +6,7 @@ pub type RustInstruction = String;
 pub struct RustProducer {
     pub main_header: String,
     pub main_is_parallel: bool,
-    //pub fr_memory_size: usize, // depending of the prime; missing in build.rs
+    // pub fr_memory_size: usize, // depending of the prime; missing in build.rs
     pub has_parallelism: bool,
     pub number_of_main_outputs: usize,
     pub main_signal_offset: usize,
@@ -38,56 +38,24 @@ impl Default for RustProducer {
         my_map.insert(
             0,
             vec![
-                IODef {
-                    code: 0,
-                    offset: 0,
-                    lengths: [2, 3].to_vec(),
-                },
-                IODef {
-                    code: 1,
-                    offset: 6,
-                    lengths: [].to_vec(),
-                },
-                IODef {
-                    code: 2,
-                    offset: 7,
-                    lengths: [2].to_vec(),
-                },
+                IODef { code: 0, offset: 0, lengths: [2, 3].to_vec() },
+                IODef { code: 1, offset: 6, lengths: [].to_vec() },
+                IODef { code: 2, offset: 7, lengths: [2].to_vec() },
             ],
         );
         my_map.insert(
             1,
             vec![
-                IODef {
-                    code: 0,
-                    offset: 0,
-                    lengths: [3].to_vec(),
-                },
-                IODef {
-                    code: 1,
-                    offset: 3,
-                    lengths: [4, 8, 6].to_vec(),
-                },
+                IODef { code: 0, offset: 0, lengths: [3].to_vec() },
+                IODef { code: 1, offset: 3, lengths: [4, 8, 6].to_vec() },
             ],
         );
         my_map.insert(
             2,
             vec![
-                IODef {
-                    code: 0,
-                    offset: 0,
-                    lengths: [].to_vec(),
-                },
-                IODef {
-                    code: 1,
-                    offset: 1,
-                    lengths: [4].to_vec(),
-                },
-                IODef {
-                    code: 2,
-                    offset: 5,
-                    lengths: [2, 6].to_vec(),
-                },
+                IODef { code: 0, offset: 0, lengths: [].to_vec() },
+                IODef { code: 1, offset: 1, lengths: [4].to_vec() },
+                IODef { code: 2, offset: 5, lengths: [2, 6].to_vec() },
             ],
         );
         RustProducer {
@@ -95,28 +63,17 @@ impl Default for RustProducer {
             main_is_parallel: false,
             has_parallelism: false,
             main_signal_offset: 1,
-            prime: "21888242871839275222246405745257275088548364400416034343698204186575808495617"
-                .to_string(),
+            prime: "21888242871839275222246405745257275088548364400416034343698204186575808495617".to_string(),
             prime_str: "bn128".to_string(),
             number_of_main_outputs: 1,
             number_of_main_inputs: 2,
             main_input_list: [("in1".to_string(), 2, 1), ("in2".to_string(), 3, 1)].to_vec(), //[].to_vec(),
             signals_in_witness: 20,
-            witness_to_signal_list: [
-                0, 1, 2, 3, 4, 5, 6, 12, 16, 19, 24, 27, 33, 42, 46, 50, 51, 65, 78, 79,
-            ]
-            .to_vec(), //[].to_vec(),
-            message_list: [
-                "Main".to_string(),
-                "Hola Herme".to_string(),
-                "Hola Albert".to_string(),
-            ]
-            .to_vec(), //[].to_vec(),
+            witness_to_signal_list: [0, 1, 2, 3, 4, 5, 6, 12, 16, 19, 24, 27, 33, 42, 46, 50, 51, 65, 78, 79].to_vec(), //[].to_vec(),
+            message_list: ["Main".to_string(), "Hola Herme".to_string(), "Hola Albert".to_string()].to_vec(), //[].to_vec(),
             field_tracking: [
-                "1884242871839275222246405745257275088548364400416034343698204186575808495617"
-                    .to_string(),
-                "21888242871839275222246405745257275088548364400416034343698204186575808495615"
-                    .to_string(),
+                "1884242871839275222246405745257275088548364400416034343698204186575808495617".to_string(),
+                "21888242871839275222246405745257275088548364400416034343698204186575808495615".to_string(),
                 "31424553576487322".to_string(),
             ]
             .to_vec(),

@@ -306,7 +306,7 @@ impl WriteWasm for StoreBucket {
     }
 }
 
-impl WriteC for StoreBucket {
+impl WriteRust for StoreBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
         use rust_code_generator::*;
         let mut prologue = vec![];
@@ -315,365 +315,156 @@ impl WriteC for StoreBucket {
         if let AddressType::SubcmpSignal { cmp_address, .. } = &self.dest_address_type {
             let (mut cmp_prologue, cmp_index) = cmp_address.produce_rust(producer, parallel);
             prologue.append(&mut cmp_prologue);
-            prologue.push("{".to_string());
-            prologue.push(format!("uint {} = {};", cmp_index_ref, cmp_index));
+            prologue.push(format!("{{"));
+            prologue.push(format!("let cmp_index_ref = {};", cmp_index));
         }
-        let ((mut dest_prologue, dest_index), my_template_header) = if let LocationRule::Indexed {
-            location,
-            template_header,
-        } = &self.dest
-        {
-            (
-                location.produce_rust(producer, parallel),
-                template_header.clone(),
-            )
-        } else if let LocationRule::Mapped {
-            signal_code,
-            indexes,
-        } = &self.dest
-        {
-            //if Mapped must be SubcmpSignal
-            let mut map_prologue = vec![];
-            let sub_component_pos_in_memory =
-                format!("{}[{}]", MY_SUBCOMPONENTS, cmp_index_ref);
-            let mut map_access = format!(
-                "{}->{}[{}].defs[{}].offset",
-                circom_calc_wit(),
-                template_ins_2_io_info(),
-                template_id_in_component(sub_component_pos_in_memory.clone()),
-                signal_code
-            );
-            if !indexes.is_empty() {
-                map_prologue.push("{".to_string());
-                map_prologue.push(format!(
-                    "uint map_index_aux[{}];",
-                    indexes.len()
-                ));
-                let (mut index_code_0, mut map_index) = indexes[0].produce_rust(producer, parallel);
-                map_prologue.append(&mut index_code_0);
-                map_prologue.push(format!("map_index_aux[0]={};", map_index));
-                map_index = "map_index_aux[0]".to_string();
-                for i in 1..indexes.len() {
-                    let (mut index_code, index_exp) = indexes[i].produce_rust(producer, parallel);
-                    map_prologue.append(&mut index_code);
-                    map_prologue.push(format!("map_index_aux[{}]={};", i, index_exp));
-                    map_index = format!(
-                        "({})*{}->{}[{}].defs[{}].lengths[{}]+map_index_aux[{}]",
-                        map_index,
-                        circom_calc_wit(),
-                        template_ins_2_io_info(),
-                        template_id_in_component(sub_component_pos_in_memory.clone()),
-                        signal_code,
-                        (i - 1),
-                        i
-                    );
-                }
-                map_access = format!("{}+{}", map_access, map_index);
+        let ((mut dest_prologue, dest_index), my_template_header) = match &self.dest {
+            LocationRule::Indexed { location, template_header } => {
+                (location.produce_rust(producer, parallel), template_header.clone())
             }
-            (
-                (map_prologue, map_access),
-                Some(template_id_in_component(
-                    sub_component_pos_in_memory,
-                )),
-            )
-        } else {
-            assert!(false);
-            ((vec![], "".to_string()), Option::<String>::None)
+            LocationRule::Mapped { signal_code, indexes } => {
+                // if Mapped must be subcomponent signal
+                let mut map_prologue = vec![];
+                let mut map_access = format!(
+                    "ctx.circuit.template_to_io_signal[&ctx.components[subcomponents[cmp_index_ref]].template_id][{}].offset",
+                    signal_code
+                );
+                if indexes.len() > 0 {
+                    map_prologue.push(format!("{{"));
+                    map_prologue.push(format!("let mut map_index_aux = vec![0usize; {}];", indexes.len().to_string()));
+                    let (mut index_code_0, mut map_index) = indexes[0].produce_rust(producer, parallel);
+                    map_prologue.append(&mut index_code_0);
+                    map_prologue.push(format!("map_index_aux[0] = {};", map_index));
+                    map_index = format!("map_index_aux[0]");
+                    for i in 1..indexes.len() {
+                        let (mut index_code, index_exp) = indexes[i].produce_rust(producer, parallel);
+                        map_prologue.append(&mut index_code);
+                        map_prologue.push(format!("map_index_aux[{}] = {};", i.to_string(), index_exp));
+                        map_index = format!(
+                            "map_index_aux[0] * ctx.circuit.template_to_io_signal[&ctx.components[subcomponents[cmp_index_ref]][{}].lengths[{}] + map_index_aux[{}]",
+                            signal_code,
+                            i - 1,
+                            i
+                        );
+                    }
+                    map_access = format!("{}+{}", map_access, map_index);
+                }
+                ((map_prologue, map_access), Some("ctx.components[subcomponents[cmp_index_ref]].template_id".into()))
+            }
         };
+
         prologue.append(&mut dest_prologue);
         // Build dest
         let dest = match &self.dest_address_type {
             AddressType::Variable => {
-                format!("&{}", lvar(dest_index.clone()))
+                format!("lvar[{}]", dest_index.clone())
             }
             AddressType::Signal => {
-                format!("&{}", signal_values(dest_index.clone()))
+                format!("ctx.signals[signal_start + {}]", dest_index.clone())
             }
             AddressType::SubcmpSignal { .. } => {
-                let sub_cmp_start = format!(
-                    "{}->componentMemory[{}[{}]].signalStart",
-                    CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref
-                );
-                format!(
-                    "&{}->signalValues[{} + {}]",
-                    CIRCOM_CALC_WIT,
-                    sub_cmp_start,
-                    dest_index
-                )
+                let sub_cmp_start = format!("ctx.components[subcomponents[{}]].signal_start", cmp_index_ref);
+                format!("ctx.signals[{} + {}]", sub_cmp_start, dest_index.clone())
             }
         };
-        //keep dest_index in an auxiliar if parallel and out put
+        // keep dest_index in an auxiliar if parallel and out put
         if let AddressType::Signal = &self.dest_address_type {
             if parallel.unwrap() && self.dest_is_output {
-                prologue.push("{".to_string());
-                prologue.push(format!("uint {} = {};", aux_dest_index, dest_index));
+                prologue.push(format!("{{"));
+                prologue.push(format!("uint {} = {};", aux_dest_index, dest_index.clone()));
             }
         }
         // store src in dest
-        prologue.push("{".to_string());
-        let aux_dest = "aux_dest".to_string();
-        prologue.push(format!("{} {} = {};", T_P_FR_ELEMENT, aux_dest, dest));
+        prologue.push(format!("{{"));
         // Load src
-        prologue.push("// load src".to_string());
+        prologue.push(format!("// load src"));
         let (mut src_prologue, src) = self.src.produce_rust(producer, parallel);
         prologue.append(&mut src_prologue);
-        prologue.push("// end load src".to_string());
+        prologue.push(format!("// end load src"));
         std::mem::drop(src_prologue);
         if self.context.size > 1 {
-            let copy_arguments = vec![aux_dest, src, self.context.size.to_string()];
-            prologue.push(format!(
-                "{};",
-                build_call("Fr_copyn".to_string(), copy_arguments)
-            ));
+            let copy_arguments = vec![dest, src, self.context.size.to_string()];
+            prologue.push(format!("{};", build_call("Fr_copyn".to_string(), copy_arguments)));
             if let AddressType::Signal = &self.dest_address_type {
                 if parallel.unwrap() && self.dest_is_output {
-                    prologue.push("{".to_string());
-                    prologue.push(format!(
-                        "for (int i = 0; i < {}; i++) {{",
-                        self.context.size
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].mutexes[{}+i].lock();",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].outputIsSet[{}+i]=true;",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].mutexes[{}+i].unlock();",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].cvs[{}+i].notify_all();",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push("}".to_string());
-                    prologue.push("}".to_string());
-                    prologue.push("}".to_string());
+                    unimplemented!()
                 }
             }
         } else {
-            let copy_arguments = vec![aux_dest, src];
-            prologue.push(format!(
-                "{};",
-                build_call("Fr_copy".to_string(), copy_arguments)
-            ));
+            prologue.push(format!("{} = {};", dest, src));
             if let AddressType::Signal = &self.dest_address_type {
                 if parallel.unwrap() && self.dest_is_output {
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].mutexes[{}].lock();",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].outputIsSet[{}]=true;",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].mutexes[{}].unlock();",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push(format!(
-                        "{}->componentMemory[{}].cvs[{}].notify_all();",
-                        CIRCOM_CALC_WIT,
-                        CTX_INDEX,
-                        aux_dest_index
-                    ));
-                    prologue.push("}".to_string());
+                    unimplemented!()
                 }
             }
         }
-        prologue.push("}".to_string());
+        prologue.push(format!("}}"));
         match &self.dest_address_type {
-            AddressType::SubcmpSignal {
-                uniform_parallel_value,
-                input_information,
-                ..
-            } => {
+            AddressType::SubcmpSignal { uniform_parallel_value, input_information, .. } => {
                 // if subcomponent input check if run needed
-                let sub_cmp_counter = format!(
-                    "{}->componentMemory[{}[{}]].inputCounter",
-                    CIRCOM_CALC_WIT, MY_SUBCOMPONENTS, cmp_index_ref
-                );
-                let sub_cmp_counter_decrease =
-                    format!("{} -= {}", sub_cmp_counter, self.context.size);
+                let input_counter = format!("ctx.components[subcomponents[cmp_index_ref]].input_counter");
+                // let sub_cmp_counter_decrease = format!("{} -= {}", input_counter, self.context.size);
                 if let InputInformation::Input { status } = input_information {
                     if let StatusInput::NoLast = status {
                         // no need to run subcomponent
                         prologue.push("// no need to run sub component".to_string());
-                        prologue.push(format!("{};", sub_cmp_counter_decrease));
-                        prologue.push(format!("assert({} > 0);", sub_cmp_counter));
+                        prologue.push(format!("{} -= {};", input_counter, self.context.size));
+                        prologue.push(format!("assert!({} != 0);", input_counter));
                     } else {
-                        let sub_cmp_pos = format!("{}[{}]", MY_SUBCOMPONENTS, cmp_index_ref);
-                        let sub_cmp_call_arguments = vec![sub_cmp_pos, CIRCOM_CALC_WIT.to_string()];
+                        let sub_cmp_call_arguments =
+                            vec!["subcomponents[cmp_index_ref]".to_string(), "ctx".to_string()];
                         // to create the call instruction we need to consider the cases of parallel/not parallel/ known only at execution
                         if uniform_parallel_value.is_some() {
-                            // Case parallel
                             let mut call_instructions = if uniform_parallel_value.unwrap() {
-                                let sub_cmp_call_name =
-                                    if let LocationRule::Indexed { .. } = &self.dest {
-                                        format!("{}_run_parallel", my_template_header.unwrap())
-                                    } else {
-                                        format!(
-                                            "(*{}[{}])",
-                                            function_table_parallel(),
-                                            my_template_header.unwrap()
-                                        )
-                                    };
-                                let mut thread_call_instr = vec![];
-
-                                // parallelism
-                                thread_call_instr.push(format!(
-                                    "{}->componentMemory[{}].sbct[{}] = std::thread({},{});",
-                                    CIRCOM_CALC_WIT,
-                                    CTX_INDEX,
-                                    cmp_index_ref,
-                                    sub_cmp_call_name,
-                                    argument_list(sub_cmp_call_arguments)
-                                ));
-                                thread_call_instr.push(format!(
-                                    "std::unique_lock<std::mutex> lkt({}->numThreadMutex);",
-                                    CIRCOM_CALC_WIT
-                                ));
-                                thread_call_instr.push(format!("{}->ntcvs.wait(lkt, [{}]() {{return {}->numThread <  {}->maxThread; }});",CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT));
-                                thread_call_instr.push("ctx->numThread++;".to_string());
-                                thread_call_instr
+                                unimplemented!();
                             }
                             // Case not parallel
                             else {
-                                let sub_cmp_call_name =
-                                    if let LocationRule::Indexed { .. } = &self.dest {
-                                        format!("{}_run", my_template_header.unwrap())
-                                    } else {
-                                        format!(
-                                            "(*{}[{}])",
-                                            function_table(),
-                                            my_template_header.unwrap()
-                                        )
-                                    };
-                                vec![format!(
-                                    "{};",
-                                    build_call(sub_cmp_call_name, sub_cmp_call_arguments)
-                                )]
+                                let sub_cmp_call_name = if let LocationRule::Indexed { .. } = &self.dest {
+                                    format!("{}_run", my_template_header.unwrap())
+                                } else {
+                                    format!("(ctx.function_table[{}])", my_template_header.unwrap())
+                                };
+                                vec![format!("{};", build_call(sub_cmp_call_name, sub_cmp_call_arguments))]
                             };
                             if let StatusInput::Unknown = status {
-                                let sub_cmp_counter_decrease_andcheck =
-                                    format!("!({})", sub_cmp_counter_decrease);
-                                let if_condition = vec![sub_cmp_counter_decrease_andcheck];
                                 prologue.push("// run sub component if needed".to_string());
+                                prologue.push(format!("{} -= {};", input_counter, self.context.size));
+                                let cond = format!("{} == 0", input_counter);
                                 let else_instructions = vec![];
-                                prologue.push(build_conditional(
-                                    if_condition,
-                                    call_instructions,
-                                    else_instructions,
-                                ));
+                                let mut conditional = build_conditional(cond, call_instructions, else_instructions);
+                                prologue.append(&mut conditional);
                             } else {
                                 prologue.push("// need to run sub component".to_string());
-                                prologue.push(format!("{};", sub_cmp_counter_decrease));
-                                prologue.push(format!("assert(!({}));", sub_cmp_counter));
+                                prologue.push(format!("{} -= {};", input_counter, self.context.size));
+                                prologue.push(format!("assert!({} == 0);", input_counter));
                                 prologue.append(&mut call_instructions);
                             }
                         }
                         // Case we only know if it is parallel at execution
                         else {
-                            prologue.push(format!(
-                                "if ({}[{}]){{",
-                                MY_SUBCOMPONENTS_PARALLEL, cmp_index_ref
-                            ));
-
-                            // case parallel
-                            let sub_cmp_call_name = if let LocationRule::Indexed { .. } = &self.dest
-                            {
-                                format!("{}_run_parallel", my_template_header.clone().unwrap())
-                            } else {
-                                format!(
-                                    "(*{}[{}])",
-                                    function_table_parallel(),
-                                    my_template_header.clone().unwrap()
-                                )
-                            };
-                            let mut call_instructions = vec![];
-                            // parallelism
-                            call_instructions.push(format!(
-                                "{}->componentMemory[{}].sbct[{}] = std::thread({},{});",
-                                CIRCOM_CALC_WIT,
-                                CTX_INDEX,
-                                cmp_index_ref,
-                                sub_cmp_call_name,
-                                argument_list(sub_cmp_call_arguments.clone())
-                            ));
-                            call_instructions.push(format!(
-                                "std::unique_lock<std::mutex> lkt({}->numThreadMutex);",
-                                CIRCOM_CALC_WIT
-                            ));
-                            call_instructions.push(format!("{}->ntcvs.wait(lkt, [{}]() {{return {}->numThread <  {}->maxThread; }});",CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT,CIRCOM_CALC_WIT));
-                            call_instructions.push("ctx->numThread++;".to_string());
-
-                            if let StatusInput::Unknown = status {
-                                let sub_cmp_counter_decrease_andcheck =
-                                    format!("!({})", sub_cmp_counter_decrease);
-                                let if_condition = vec![sub_cmp_counter_decrease_andcheck];
-                                prologue.push("// run sub component if needed".to_string());
-                                let else_instructions = vec![];
-                                prologue.push(build_conditional(
-                                    if_condition,
-                                    call_instructions,
-                                    else_instructions,
-                                ));
-                            } else {
-                                prologue.push("// need to run sub component".to_string());
-                                prologue.push(format!("{};", sub_cmp_counter_decrease));
-                                prologue.push(format!("assert(!({}));", sub_cmp_counter));
-                                prologue.append(&mut call_instructions);
-                            }
-                            // end of case parallel
-
-                            prologue.push("} else {".to_string());
-
                             // case not parallel
-                            let sub_cmp_call_name = if let LocationRule::Indexed { .. } = &self.dest
-                            {
+                            let sub_cmp_call_name = if let LocationRule::Indexed { .. } = &self.dest {
                                 format!("{}_run", my_template_header.unwrap())
                             } else {
                                 format!("(*{}[{}])", function_table(), my_template_header.unwrap())
                             };
-                            let mut call_instructions = vec![format!(
-                                "{};",
-                                build_call(sub_cmp_call_name, sub_cmp_call_arguments)
-                            )];
+                            let mut call_instructions =
+                                vec![format!("{};", build_call(sub_cmp_call_name, sub_cmp_call_arguments))];
+
                             if let StatusInput::Unknown = status {
-                                let sub_cmp_counter_decrease_andcheck =
-                                    format!("!({})", sub_cmp_counter_decrease);
-                                let if_condition = vec![sub_cmp_counter_decrease_andcheck];
                                 prologue.push("// run sub component if needed".to_string());
+                                prologue.push(format!("{} -= {};", input_counter, self.context.size));
+                                let cond = format!("{} == 0", input_counter);
                                 let else_instructions = vec![];
-                                prologue.push(build_conditional(
-                                    if_condition,
-                                    call_instructions,
-                                    else_instructions,
-                                ));
+                                let mut conditional = build_conditional(cond, call_instructions, else_instructions);
+                                prologue.append(&mut conditional);
                             } else {
                                 prologue.push("// need to run sub component".to_string());
-                                prologue.push(format!("{};", sub_cmp_counter_decrease));
-                                prologue.push(format!("assert(!({}));", sub_cmp_counter));
+                                prologue.push(format!("{} -= {};", input_counter, self.context.size));
+                                prologue.push(format!("assert!({} == 0);", input_counter));
                                 prologue.append(&mut call_instructions);
                             }
-                            // end of not parallel case
-                            prologue.push("}".to_string());
                         }
                     }
                 } else {
@@ -683,11 +474,11 @@ impl WriteC for StoreBucket {
             _ => (),
         }
         if let AddressType::SubcmpSignal { .. } = &self.dest_address_type {
-            prologue.push("}".to_string());
+            prologue.push(format!("}}"));
         }
         if let LocationRule::Mapped { indexes, .. } = &self.dest {
-            if !indexes.is_empty() {
-                prologue.push("}".to_string());
+            if indexes.len() > 0 {
+                prologue.push(format!("}}"));
             }
         }
 

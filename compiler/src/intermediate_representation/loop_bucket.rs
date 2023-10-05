@@ -76,21 +76,20 @@ impl WriteWasm for LoopBucket {
     }
 }
 
-impl WriteC for LoopBucket {
+impl WriteRust for LoopBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::merge_code;
-        let (continue_code, continue_result) =
-            self.continue_condition.produce_rust(producer, parallel);
-        let continue_result = format!("Fr_isTrue({})", continue_result);
+        let (continue_code, continue_result) = self.continue_condition.produce_rust(producer, parallel);
+        let continue_result = format!("field::is_true({})", continue_result);
         let mut body = vec![];
         for instr in &self.body {
             let (mut instr_code, _) = instr.produce_rust(producer, parallel);
             body.append(&mut instr_code);
         }
         body.append(&mut continue_code.clone());
-        let while_loop = format!("while({}){{\n{}}}", continue_result, merge_code(body));
         let mut loop_c = continue_code;
-        loop_c.push(while_loop);
+        loop_c.push(format!("while {} {{", continue_result));
+        loop_c.append(&mut body);
+        loop_c.push(format!("}}"));
         (loop_c, "".to_string())
     }
 }

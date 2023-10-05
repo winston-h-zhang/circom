@@ -124,7 +124,7 @@ impl WriteWasm for Instruction {
     }
 }
 
-impl WriteC for Instruction {
+impl WriteRust for Instruction {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
         use Instruction::*;
         assert!(parallel.is_some());

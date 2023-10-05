@@ -107,52 +107,8 @@ impl WriteWasm for LogBucket {
     }
 }
 
-impl WriteC for LogBucket {
+impl WriteRust for LogBucket {
     fn produce_rust(&self, producer: &RustProducer, parallel: Option<bool>) -> (Vec<String>, String) {
-        use rust_code_generator::*;
-        let mut log_c = Vec::new();
-        let mut index = 0;
-        for logarg in &self.argsprint {
-            if let LogBucketArg::LogExp(exp) = logarg {
-                let (mut argument_code, argument_result) = exp.produce_rust(producer, parallel);
-                let to_string_call =
-                    build_call("Fr_element2str".to_string(), vec![argument_result]);
-                let temp_var = "temp".to_string();
-                let into_temp = format!("char* temp = {}", to_string_call);
-                let print_c = build_call(
-                    "printf".to_string(),
-                    vec!["\"%s\"".to_string(), temp_var.clone()],
-                );
-                let delete_temp = format!("delete [] {}", temp_var);
-                log_c.append(&mut argument_code);
-                log_c.push("{".to_string());
-                log_c.push(format!("{};", into_temp));
-                log_c.push(format!("{};", print_c));
-                log_c.push(format!("{};", delete_temp));
-                log_c.push("}".to_string());
-            } else if let LogBucketArg::LogStr(string_id) = logarg {
-                let string_value = &producer.get_string_table()[*string_id];
-
-                let print_c =
-                    build_call("printf".to_string(), vec![format!("\"{}\"", string_value)]);
-                log_c.push("{".to_string());
-                log_c.push(format!("{};", print_c));
-                log_c.push("}".to_string());
-            } else {
-                unreachable!();
-            }
-            if index != self.argsprint.len() - 1 {
-                let print_c = build_call("printf".to_string(), vec![format!("\" \"")]);
-                log_c.push("{".to_string());
-                log_c.push(format!("{};", print_c));
-                log_c.push("}".to_string());
-            }
-            index += 1;
-        }
-        let print_end_line = build_call("printf".to_string(), vec![format!("\"\\n\"")]);
-        log_c.push("{".to_string());
-        log_c.push(format!("{};", print_end_line));
-        log_c.push("}".to_string());
-        (log_c, "".to_string())
+        todo!("log")
     }
 }

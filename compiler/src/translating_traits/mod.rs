@@ -2,7 +2,7 @@ use code_producers::rust_elements::*;
 use code_producers::wasm_elements::*;
 use std::io::Write;
 
-pub trait WriteC {
+pub trait WriteRust {
     /*
         returns (x, y) where:
             x: c instructions produced.

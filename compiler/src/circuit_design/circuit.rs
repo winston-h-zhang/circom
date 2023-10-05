@@ -286,7 +286,7 @@ impl WriteWasm for Circuit {
     }
 }
 
-impl WriteC for Circuit {
+impl WriteRust for Circuit {
     fn produce_rust(&self, producer: &RustProducer, _parallel: Option<bool>) -> (Vec<String>, String) {
         use rust_code_generator::*;
         let mut code = vec![];
@@ -584,26 +584,20 @@ impl Circuit {
     pub fn produce_rust<W: Write>(
         &self,
         rust_folder: &str,
-        run_name: &str,
-        c_circuit: &mut W,
-        c_dat: &mut W,
+        _run_name: &str,
+        rust_circuit: &mut W,
+        rust_dat: &mut W,
     ) -> Result<(), ()> {
         use std::path::Path;
         let rust_folder_path = Path::new(rust_folder.clone()).to_path_buf();
-        rust_code_generator::generate_main_cpp_file(&rust_folder_path).map_err(|_err| {})?;
-        rust_code_generator::generate_circom_hpp_file(&rust_folder_path).map_err(|_err| {})?;
-        rust_code_generator::generate_fr_hpp_file(&rust_folder_path, &self.rust_producer.prime_str)
+        rust_code_generator::generate_main_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_circom_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_field_file(&rust_folder_path, &self.rust_producer.prime_str)
             .map_err(|_err| {})?;
-        rust_code_generator::generate_calcwit_hpp_file(&rust_folder_path).map_err(|_err| {})?;
-        rust_code_generator::generate_fr_cpp_file(&rust_folder_path, &self.rust_producer.prime_str)
-            .map_err(|_err| {})?;
-        rust_code_generator::generate_calcwit_cpp_file(&rust_folder_path).map_err(|_err| {})?;
-        rust_code_generator::generate_fr_asm_file(&rust_folder_path, &self.rust_producer.prime_str)
-            .map_err(|_err| {})?;
-        rust_code_generator::generate_make_file(&rust_folder_path, run_name, &self.rust_producer)
-            .map_err(|_err| {})?;
-        rust_code_generator::generate_dat_file(c_dat, &self.rust_producer).map_err(|_err| {})?;
-        self.write_rust(c_circuit, &self.rust_producer)
+        rust_code_generator::generate_cargo_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_cargo_lock_file(&rust_folder_path).map_err(|_err| {})?;
+        rust_code_generator::generate_dat_file(rust_dat, &self.rust_producer).map_err(|_err| {})?;
+        self.write_rust(rust_circuit, &self.rust_producer)
     }
     pub fn produce_wasm<W: Write>(
         &self,
